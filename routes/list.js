@@ -37,7 +37,11 @@ module.exports.version = function(req, res){
     });
     request.head({uri: versionPath, json: true}, function(err, versionRes){
         if (!err && versionRes.statusCode !== 404){
-            request.get(versionPath).pipe(res);
+            // the response needs to be sent as JSON
+            request.get(versionPath, function(err, msg, body) {
+                res.set('Content-Type', 'application/json');
+                res.send(JSON.parse(body));
+            });
             return;
         }
         request.get(createOption(req), function(err, npmRes, body){
@@ -65,10 +69,18 @@ module.exports.artifact = function(req, res){
             request.get(artPath).pipe(res);
             return;
         }
-        request.get({url: url.format(config.npm) + req.url, encoding: null}, function(err, npmRes, body){
-            request.put({uri: artPath, body: body}, function(){
-                res.send(body);
+        request.get(
+            {
+                url: url.format(config.npm) + req.url,
+                encoding: null,
+                headers: {
+                    Host: config.npm.host
+                }
+            },
+            function(err, npmRes, body){
+                request.put({uri: artPath, body: body}, function(){
+                    res.send(body);
+                });
             });
-        });
     });
 }
