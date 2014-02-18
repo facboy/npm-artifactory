@@ -1,16 +1,19 @@
 var express = require('express')
-  , routes = require('./routes')
   , http = require('http')
   , path = require('path')
-  , config = require('./config')
-  , cluster = require('cluster');
+  , cluster = require('cluster')
+  , _ = require('lodash')
+  , fs = require('fs')
+  , config = loadConfig()
+  , routes = require('./routes')(config);
 
 cluster.on('exit', function(worker){
     console.log('Worker ' + worker.id + ' died');
     cluster.fork();
 });
 
-if (cluster.isMaster){
+// if we're remote debugging, don't use cluster
+if (!isDebug() && cluster.isMaster){
     var count = require('os').cpus().length;
     for (var i = 0; i < count; i++){
         cluster.fork();
@@ -42,4 +45,28 @@ if (cluster.isMaster){
     http.createServer(app).listen(app.get('port'), function(){
       console.log('Express server listening on port ' + app.get('port'));
     });
+}
+
+function loadConfig() {
+    var opts = require('nopt')(
+            {
+                'config': [String]
+            },
+            {
+                'c':
+                    'config'
+            }),
+        configFile = './config';
+
+    if (opts.config) {
+        configFile = (/\.\/|\.\.\//.test(opts.config) && opts.config) || './' + opts.config;
+    }
+
+    return require(configFile);
+}
+
+function isDebug() {
+    return _.some(process.execArgv, function(arg) {
+        return /^--debug/.test(arg);
+    })
 }
