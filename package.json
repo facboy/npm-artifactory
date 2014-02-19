@@ -22,7 +22,7 @@
     "express": "~3.4.0",
     "lodash": "~2.4.1",
     "nopt": "~2.2.0",
-    "request": "~2.31.0"
+    "request": "~2.33.0"
   },
   "devDependencies": {
     "mocha": "~1.12.0",

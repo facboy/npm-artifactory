@@ -53,8 +53,7 @@ function loadConfig() {
                 'config': [String]
             },
             {
-                'c':
-                    'config'
+                'c': ['--config']
             }),
         configFile = './config';
 

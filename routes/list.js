@@ -17,9 +17,7 @@ module.exports = function(config) {
         var artPath = util.artMetaPath(req.params.packagename);
         request.head({uri: artPath, json: true}, function(err, metaRes) {
             if (!err && metaRes.statusCode !== 404) {
-                request.get(artPath, function(err, artRes, body) {
-                    body = JSON.parse(body);
-
+                request.get({uri: artPath, json: true}, function(err, artRes, body) {
                     // check whether meta has changed
                     var npmRequest = createOption(req);
                     if (body.etag) {
@@ -43,7 +41,7 @@ module.exports = function(config) {
             }
 
             function getFromNpm() {
-                var npmRequest = createOption(req);
+                var npmRequest = createOption(req, {json: true});
                 request.get(npmRequest, function(err, npmRes, body){
                     if (!err && npmRes.statusCode === 304){
                         res.send(npmRes.statusCode);
@@ -52,17 +50,16 @@ module.exports = function(config) {
                         res.send(getStatusCode(npmRes, 500));
                     } else {
                         // store the etag and the metadata
-                        var meta = JSON.parse(body),
-                            stored = JSON.stringify({
-                                etag: npmRes.headers.etag,
-                                meta: meta
-                            });
+                        var stored = {
+                            etag: npmRes.headers.etag,
+                            meta: body
+                        };
 
                         // store the original data, and modify what we send back - this allows eg the npm-artifactory
                         // to change its location yet still use the same artifactory instance
                         // todo: just do the get with accepts: text/plain
-                        request.put({uri: artPath, body: stored}, function(){
-                            sendMeta(meta);
+                        request.put({uri: artPath, json: stored}, function(){
+                            sendMeta(body);
                         });
                     }
                 });
@@ -73,7 +70,7 @@ module.exports = function(config) {
                 res.send(meta);
             }
         });
-    }
+    };
 
     /**
      * Version always uses the metadata in artifactory, if it is available.  This way if for some reason
@@ -88,12 +85,11 @@ module.exports = function(config) {
         });
         request.head({uri: versionPath, json: true}, function(err, versionRes){
             if (!err && versionRes.statusCode !== 404) {
-                request.get(versionPath, function(err, msg, body) {
-                    // the response needs to be sent as JSON
-                    sendVersion(JSON.parse(body));
+                request.get({uri: versionPath, json: true}, function(err, msg, body) {
+                    sendVersion(body);
                 });
             } else {
-                var npmRequest = createOption(req);
+                var npmRequest = createOption(req, {json: true});
                 request.get(npmRequest, function(err, npmRes, body){
                     if (err || npmRes.statusCode !== 200) {
                         console.warn('GET %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
@@ -101,10 +97,9 @@ module.exports = function(config) {
                     } else {
                         // store the original data, and modify what we send back - this allows eg the npm-artifactory
                         // to change its location yet still use the same artifactory instance
-                        var version = JSON.parse(body);
                         // todo: just do the GET with accepts: text/plain
-                        request.put({uri: versionPath, json: version}, function(){
-                            sendVersion(version);
+                        request.put({uri: versionPath, json: body}, function(){
+                            sendVersion(body);
                         });
                     }
                 });
@@ -115,7 +110,7 @@ module.exports = function(config) {
                 res.send(version);
             }
         });
-    }
+    };
 
     exports.artifact = function(req, res){
         var filename = req.params.filename;
@@ -147,7 +142,7 @@ module.exports = function(config) {
                 });
             }
         });
-    }
+    };
 
     var httpRegex,
         httpsRegex,
@@ -173,8 +168,8 @@ module.exports = function(config) {
     }
 
     function replaceNpmRegistryUrl(url) {
-        url = url.replace(httpRegex, proxyPath)
-        url = url.replace(httpsRegex, proxyPath)
+        url = url.replace(httpRegex, proxyPath);
+        url = url.replace(httpsRegex, proxyPath);
         return url;
     }
 
