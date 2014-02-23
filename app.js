@@ -23,7 +23,7 @@ if (!isDebug() && cluster.isMaster){
 
     app.set('port', process.env.PORT || config.port || 3000);
     app.use(express.favicon());
-    app.use(express.logger('dev'));
+    app.use(express.logger(config.logger || 'tiny'));
     app.use(express.methodOverride());
     app.use(app.router);
 
