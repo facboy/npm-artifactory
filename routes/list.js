@@ -47,7 +47,8 @@ module.exports = function(config) {
                         res.send(npmRes.statusCode);
                     } else if (err || npmRes.statusCode !== 200) {
                         console.warn('GET %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
-                        res.send(getStatusCode(npmRes, 500));
+                        res.status(getStatusCode(npmRes, 500))
+                            .send(body);
                     } else {
                         // store the etag and the metadata
                         var stored = {
@@ -93,7 +94,8 @@ module.exports = function(config) {
                 request.get(npmRequest, function(err, npmRes, body){
                     if (err || npmRes.statusCode !== 200) {
                         console.warn('GET %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
-                        res.send(getStatusCode(npmRes, 500));
+                        res.status(getStatusCode(npmRes, 500))
+                            .send(body);
                     } else {
                         // store the original data, and modify what we send back - this allows eg the npm-artifactory
                         // to change its location yet still use the same artifactory instance
@@ -156,7 +158,7 @@ module.exports = function(config) {
     })();
 
     function fixMeta(meta) {
-        if (meta.versions) {
+        if (meta && meta.versions) {
             _.forEach(meta.versions, fixVersion);
         }
     }
