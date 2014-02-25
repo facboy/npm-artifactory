@@ -22,39 +22,45 @@ module.exports = function(config) {
                     var npmRequest = createOption(req);
                     if (body.etag) {
                         npmRequest.headers['If-None-Match'] = body.etag;
+                    } else {
+                        npmRequest.headers['If-Modified-Since'] = value.date;
                     }
-                    request.head(npmRequest, function(err, npmRes) {
-                        if (!err && npmRes.statusCode === 304) {
-                            sendMeta(body.meta);
-                        } else if (err || npmRes.statusCode !== 200) {
-                            // if there are errors, or if the code is 304, send what we have
-                            console.warn('HEAD %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
-                            sendMeta(body.meta);
-                        } else {
-                            // else reload from npm
-                            getFromNpm();
-                        }
-                    });
+
+                    getFromNpm(npmRequest, body.meta);
                 });
             } else {
                 getFromNpm();
             }
 
-            function getFromNpm() {
-                var npmRequest = createOption(req, {json: true});
+            function getFromNpm(npmRequest, currentMeta) {
+                if (!npmRequest) {
+                    npmRequest = createOption(req, {json: true});
+                } else {
+                    npmRequest.method = 'GET';
+                    npmRequest.json = true;
+                }
+
+                var date = new Date();
                 request.get(npmRequest, function(err, npmRes, body){
                     if (!err && npmRes.statusCode === 304){
                         res.send(npmRes.statusCode);
                     } else if (err || npmRes.statusCode !== 200) {
                         console.warn('GET %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
-                        res.status(getStatusCode(npmRes, 500))
-                            .send(body);
+                        if (currentMeta) {
+                            sendMeta(currentMeta);
+                        } else {
+                            res.status(getStatusCode(npmRes, 500))
+                                .send(body);
+                        }
                     } else {
-                        // store the etag and the metadata
+                        // store the etag, date and the metadata
                         var stored = {
-                            etag: npmRes.headers.etag,
-                            meta: body
+                            meta: body,
+                            date: npmRes.headers.date || date.toUTCString()
                         };
+                        if (npmRes.headers.etag) {
+                            stored.etag = npmRes.headers.etag;
+                        }
 
                         // store the original data, and modify what we send back - this allows eg the npm-artifactory
                         // to change its location yet still use the same artifactory instance
