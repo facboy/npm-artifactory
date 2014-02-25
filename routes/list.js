@@ -42,8 +42,18 @@ module.exports = function(config) {
 
                 var date = new Date();
                 request.get(npmRequest, function(err, npmRes, body){
-                    if (!err && npmRes.statusCode === 304){
-                        res.send(npmRes.statusCode);
+                    if (!err && npmRes.statusCode === 304) {
+                        // TODO if-modified-since support?
+                        // does the req have a 'if-none-match' header that matches the etag that we got from
+                        // nexus?
+                        var reqETag = req.headers['If-None-Match'];
+                        if (reqETag && reqETag === npmRequest.headers['If-None-Match']) {
+                            res.send(npmRes.statusCode);
+                        } else {
+                            // if it doesn't we have to send the actual cached content that nexus has as the client
+                            // doesn't have it
+                            sendMeta(currentMeta);
+                        }
                     } else if (err || npmRes.statusCode !== 200) {
                         console.warn('GET %s %d err - %j', npmRequest.uri, getStatusCode(npmRes, -1), err);
                         if (currentMeta) {
